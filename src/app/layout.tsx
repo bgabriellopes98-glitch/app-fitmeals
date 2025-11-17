@@ -19,6 +19,19 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "FitMeals AI - Receitas Fitness Inteligentes",
   description: "Descubra receitas fitness personalizadas com IA, controle de calorias e macronutrientes",
+  manifest: "/manifest.json",
+  themeColor: "#10B981",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "FitMeals AI",
+  },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
 };
 
 export default function RootLayout({
@@ -30,11 +43,30 @@ export default function RootLayout({
     <html lang="pt-BR">
       <head>
         <Script src="/lasy-bridge.js" strategy="beforeInteractive" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#10B981" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <Script id="register-sw" strategy="afterInteractive">
+          {`
+            if ('serviceWorker' in navigator) {
+              window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').then(
+                  function(registration) {
+                    console.log('ServiceWorker registrado com sucesso:', registration.scope);
+                  },
+                  function(err) {
+                    console.log('Falha ao registrar ServiceWorker:', err);
+                  }
+                );
+              });
+            }
+          `}
+        </Script>
       </body>
     </html>
   );
