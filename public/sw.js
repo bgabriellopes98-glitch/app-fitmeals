@@ -1,9 +1,6 @@
 const CACHE_NAME = 'fitmeals-v1';
 const urlsToCache = [
   '/',
-  '/dashboard',
-  '/login',
-  '/register'
 ];
 
 // Instalação do Service Worker
@@ -31,23 +28,44 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Estratégia de cache: Network First, fallback para Cache
+// Estratégia de cache: Network First, mas IGNORA requisições do Next.js
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Clone a resposta
-        const responseToCache = response.clone();
-        
-        caches.open(CACHE_NAME)
-          .then((cache) => {
-            cache.put(event.request, responseToCache);
+  const url = new URL(event.request.url);
+  
+  // IGNORA completamente requisições do Next.js e APIs
+  if (
+    url.pathname.startsWith('/_next/') ||           // Next.js internals
+    url.pathname.startsWith('/api/') ||             // API routes
+    url.pathname.includes('__nextjs') ||            // Next.js HMR
+    url.pathname.includes('webpack-hmr') ||         // HMR
+    url.search.includes('_rsc') ||                  // RSC payloads
+    event.request.mode === 'navigate' ||            // Navegação (deixa Next.js lidar)
+    url.pathname.startsWith('/lasy-bridge.js')      // Lasy bridge
+  ) {
+    return; // Deixa o navegador lidar normalmente
+  }
+
+  // Apenas cacheia assets estáticos (imagens, fontes, etc.)
+  if (
+    url.pathname.match(/\.(png|jpg|jpeg|svg|gif|webp|woff|woff2|ttf|css|js)$/)
+  ) {
+    event.respondWith(
+      caches.match(event.request)
+        .then((response) => {
+          if (response) {
+            return response;
+          }
+          return fetch(event.request).then((response) => {
+            if (!response || response.status !== 200) {
+              return response;
+            }
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+            return response;
           });
-        
-        return response;
-      })
-      .catch(() => {
-        return caches.match(event.request);
-      })
-  );
+        })
+    );
+  }
 });
